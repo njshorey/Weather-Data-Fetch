@@ -1,0 +1,11 @@
+{
+  "name": "weatherdata",
+  "version": "1.0.0",
+  "description": "",
+  "main": "readWeatherData.js",
+  "scripts": {
+    "test": "node readWeatherData.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
