@@ -1,6 +1,6 @@
 # fetch-global-weather-data
 
-fetches most recent global wind data directly to array using nomads API format. Data is then plotted used matlab quiver plot.
+readWatherData.py fetches most recent global wind data directly to array using nomads API format. Data is then plotted used matlab quiver plot.
 
 requirements:
 netCDF4
