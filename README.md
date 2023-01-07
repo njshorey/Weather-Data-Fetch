@@ -2,6 +2,8 @@
 
 readWatherData.py fetches most recent global wind data directly to array using nomads API format. Data is then plotted used matlab quiver plot.
 
+haversine.py determines distance between two lat + long points.
+
 requirements:
 netCDF4
 numpy
