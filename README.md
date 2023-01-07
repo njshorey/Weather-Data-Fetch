@@ -6,7 +6,6 @@ requirements:
 netCDF4
 numpy
 matplotlib
-time (to determine execution time for potential serverless deployment)
 
 Can be adjusted for higher accuracy data (1p00 => 0p25).
 Date may also be adjusted to some extent (NOT TESTED YET)
