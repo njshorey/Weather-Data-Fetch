@@ -5,10 +5,11 @@ from netCDF4 import Dataset
 from datetime import datetime, timedelta
 import json
 from PIL import Image
+import random
 
 #make download changes here
 RES = str('0p25_1hr') #adjust resolution of data here! '1p00' (1deg, 3hr projections), '0p50' (0.5deg, 3hr projections), '0p25' (0.25deg, 3hr projections), '0p25_1hr' (0.25deg, 1hr projections)
-files_wanted= 72
+files_wanted= 120
 
 start = time()
 print(datetime.now().minute)
@@ -48,6 +49,8 @@ timearray_min = min(timearray)
 timearray = [x - timearray_min for x in timearray]
 ugrd10m_base = ds.variables['ugrd10m'][:int(files_wanted),:,:]
 vgrd10m_base = ds.variables['vgrd10m'][:int(files_wanted),:,:]
+snowdepth_base = ds.variables['snodsfc'][0,:,:]
+cloudcover_base = ds.variables['tcdcclm'][0,:,:]
 ds.close()
 print('Download Successful')
 print('dx:',dx,'dy:',dy,'dt:',dt, 'nx:',nx,'ny:',ny)
@@ -155,3 +158,114 @@ for i , tval in enumerate(timearray):
 #print program run duration (removable for production)
 end = time()
 print('Duration:',end-start)
+
+# Create Snow Image
+enhancement_factor = 5
+YYYYMMDD = str(timestamp_iter.strftime("%Y%m%d"))
+HH = str(now//1) if now >=10 else f"0{str(now//1)}"
+newdata = []
+img = Image.new('RGBA', (nx*enhancement_factor, ny*enhancement_factor), (0, 0, 0, 0))
+snowdepth_init = np.flipud(snowdepth_base)
+snowdepth_init.fill_value = 0
+snowdepth = snowdepth_init.filled()
+
+enhanced = []
+i=0
+lowVal = 0.002
+triggerVal = 0.1
+for lat in snowdepth:
+    iter = 0
+    while iter < enhancement_factor:
+        j=0
+        for val in lat:
+            Odds = 0
+            if i<1 or i>=(len(snowdepth)-1):
+                if lowVal<val<50:
+                    Odds = val*10
+            else:
+                if lowVal<val<50:
+                    Odds = val*10
+                    jbefore = j-1 if j-1>0 else len(lat)-1
+                    jafter = j+1 if j+1<len(lat) else 0
+                    if snowdepth[i-1,jbefore]<triggerVal or snowdepth[i-1,j]<triggerVal or snowdepth[i-1,jafter]<triggerVal or snowdepth[i,jbefore]<triggerVal or snowdepth[i,jafter]<triggerVal or snowdepth[i+1,jbefore]<triggerVal or snowdepth[i+1,j]<triggerVal or snowdepth[i+1,jafter]<triggerVal:
+                        Odds = min(0.75, val * 5)
+            jter = 0
+            while jter < enhancement_factor:
+                num = 0
+                if Odds > lowVal:
+                    if random.random()<Odds:
+                        if random.random()<0.75:
+                            num = val
+                        else:
+                            num = 0.01
+                enhanced.append(num)
+                jter+=1
+            j+=1
+        iter+=1
+    i+=1
+    print("iter {0}/{1}".format(i,ny))
+    
+print("holy crap it's done")
+max_enhanced = max(enhanced)
+for val in enhanced:
+    R = int(div-(div*val/(max_enhanced)))
+    G= int(div-(div*val/(max_enhanced)))
+    B= int(div)
+    A=int(0)
+    if val>0.001:
+        A=int(div)
+    newdata.append((R,G,B,A))
+png_string = './exports/snow_png/'+YYYYMMDD+'_'+HH+'_'+RES.split("_")[0]+'.png'
+img.putdata(newdata)
+img.save(png_string, "PNG")
+
+
+# Create Cloud Image
+newdata = []
+img = Image.new('RGBA', (nx*enhancement_factor, ny*enhancement_factor), (0, 0, 0, 0))
+cloudcover_init = np.flipud(cloudcover_base)
+cloudcover_init.fill_value = 0
+cloudcover = cloudcover_init.filled()
+
+enhanced = []
+i=0
+triggerVal = 10
+for lat in cloudcover:
+    iter = 0
+    while iter < enhancement_factor:
+        j=0
+        for val in lat:
+            Odds = val/100
+            if i<1 or i>=(len(cloudcover)-1):
+                Odds = val/100
+            else:
+                jbefore = j-1 if j-1>0 else len(lat)-1
+                jafter = j+1 if j+1<len(lat) else 0
+                if cloudcover[i-1,jbefore]<triggerVal or cloudcover[i-1,j]<triggerVal or cloudcover[i-1,jafter]<triggerVal or cloudcover[i,jbefore]<triggerVal or cloudcover[i,jafter]<triggerVal or cloudcover[i+1,jbefore]<triggerVal or cloudcover[i+1,j]<triggerVal or cloudcover[i+1,jafter]<triggerVal:
+                    Odds = min(0.75, val/100)
+            jter = 0
+            while jter < enhancement_factor:
+                num = val/100
+                if random.random()<Odds:
+                    num = val/100
+                R = int(div)
+                G= int(div)
+                B= int(div)
+                A=int(div*num)
+                newdata.append((R,G,B,A))
+                jter+=1
+            j+=1
+        iter+=1
+    i+=1
+    print("iter {0}/{1}".format(i,ny))
+    
+print("holy crap it's done")
+# for val in enhanced:
+#     R = int(div)
+#     G= int(div)
+#     B= int(div)
+#     A=int(div*val)
+#     newdata.append((R,G,B,A))
+png_string = './exports/cloud_png/'+YYYYMMDD+'_'+HH+'_'+RES.split("_")[0]+'.png'
+img.putdata(newdata)
+img.save(png_string, "PNG")
